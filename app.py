@@ -3,7 +3,7 @@ import random
 import string
 import difflib
 import ipaddress
-from flask import Flask, request, render_template, redirect, url_for, abort, Response
+from flask import Flask, request, render_template, redirect, url_for, abort, Response, send_from_directory
 from dotenv import load_dotenv
 from models import db, Note, NoteRevision
 
@@ -143,6 +143,10 @@ def view_diff(note_id, version_num):
     
     html_diff = difflib.HtmlDiff().make_table(prev_content, curr_content, fromdesc='Previous', todesc=f'Version {version_num}')
     return render_template('diff.html', note=note, note_id=note_id, html_diff=html_diff, version_num=version_num)
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 if __name__ == '__main__':
     # app.run(debug=True, port=5000)
