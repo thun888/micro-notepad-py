@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ note.title if note else '未命名' }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #ebeef1;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .main-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .content-area textarea {
+      font-family: monospace;
+      font-size: 14px;
+      resize: none;
+    }
+    table.diff {
+        font-family: monospace;
+        width: 100%;
+    }
+    table.diff td {
+        padding: 0 4px;
+    }
+    .diff_add { background-color: #d4fcbc; }
+    .diff_chg { background-color: #fcecb0; }
+    .diff_sub { background-color: #ffd8d8; }
+    
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #333b4d;
+        color: #ddd;
+      }
+      .content-area textarea {
+        background: #24262b;
+        color: #fff;
+        border-color: #495265;
+      }
+      .diff_add { background-color: #2c4c1d; color: white;}
+      .diff_chg { background-color: #61501e; color: white;}
+      .diff_sub { background-color: #632626; color: white;}
+      .modal-content {
+        background-color: #333b4d;
+        color: #fff;
+      }
+      .modal-header, .modal-footer {
+        border-color: #495265;
+      }
+      .form-control {
+        background-color: #24262b;
+        color: #fff;
+        border-color: #495265;
+      }
+      .form-control:focus {
+        background-color: #24262b;
+        color: #fff;
+      }
+      .table {
+        color: #fff;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark px-3 flex-shrink-0">
+    <div class="d-flex align-items-baseline">
+      <a class="navbar-brand mb-0 h1" href="#" data-bs-toggle="modal" data-bs-target="#titleModal" id="display-note-title" title="点击修改标题" style="text-decoration: dashed underline; text-underline-offset: 4px;">{{ note.title if note else '未命名' }}</a>
+      <span class="text-secondary ms-2">| /{{ note_id }}</span>
+      <span class="text-secondary ms-3 small">{% block status_text %}{% endblock %}</span>
+    </div>
+    <div class="ms-auto d-flex align-items-center">
+      <a href="{{ url_for('view_note', note_id=note_id) }}" class="text-light text-decoration-none ms-3">编辑</a>
+      <a href="{{ url_for('view_revisions', note_id=note_id) }}" class="text-light text-decoration-none ms-3">历史记录</a>
+      {% block extra_nav %}{% endblock %}
+    </div>
+  </nav>
+
+  {% block content %}{% endblock %}
+
+  <!-- 标题修改弹窗 Modal -->
+  <div class="modal fade" id="titleModal" tabindex="-1" aria-labelledby="titleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="titleModalLabel">修改笔记标题</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="text" id="note-title-input" class="form-control" value="{{ note.title if note else '未命名' }}">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+          <button type="button" class="btn btn-primary" onclick="updateTitle()">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.css"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const titleInput = document.getElementById('note-title-input');
+    const displayTitle = document.getElementById('display-note-title');
+    
+    function updateTitle() {
+      const newTitle = titleInput.value.trim() || '未命名';
+      fetch('/{{ note_id }}/title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle })
+      }).then(res => res.json()).then(data => {
+        if (data.status === 'ok') {
+          displayTitle.innerText = newTitle;
+          document.title = newTitle;
+          const modal = bootstrap.Modal.getInstance(document.getElementById('titleModal'));
+          modal.hide();
+        }
+      }).catch(err => console.error(err));
+    }
+
+    // 回车保存
+    titleInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        updateTitle();
+      }
+    });
+    
+    // 弹窗显示时自动聚焦输入框
+    document.getElementById('titleModal').addEventListener('shown.bs.modal', () => {
+      titleInput.focus();
+      titleInput.select();
+    });
+  </script>
+</body>
+</html>

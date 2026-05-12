@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+
+{% block status_text %}版本: {{ rev.version_num }} (只读){% endblock %}
+
+{% block extra_nav %}
+<a href="{{ url_for('view_revisions', note_id=note_id) }}" class="btn btn-outline-light btn-sm ms-3">返回历史记录</a>
+{% endblock %}
+
+{% block content %}
+<div class="main-container mx-3 my-3">
+  <div class="content-area d-flex h-100">
+    <textarea id="content" class="form-control w-100 h-100 shadow-none rounded-0" readonly>{{ rev.content }}</textarea>
+  </div>
+</div>
+<pre id="printable" class="d-none print-block">{{ rev.content }}</pre>
+<style>
+  @media print {
+    body > * { display: none !important; }
+    .print-block { display: block !important; white-space: pre-wrap; word-break: break-word; color: black; background: transparent; }
+  }
+</style>
+{% endblock %}

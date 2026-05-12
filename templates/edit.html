@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+
+{% block status_text %}{% if latest_rev %}当前版本: {{ latest_rev.version_num }}{% else %}新建笔记{% endif %}{% endblock %}
+
+{% block extra_nav %}
+<button type="submit" form="edit-form" class="btn btn-primary btn-sm ms-3">保存</button>
+{% endblock %}
+
+{% block content %}
+<div class="main-container mx-3 my-3">
+  <form id="edit-form" method="POST" action="{{ url_for('view_note', note_id=note_id) }}" class="h-100 d-flex flex-column">
+    <div class="content-area d-flex h-100">
+      <textarea id="content" name="content" class="form-control w-100 h-100 shadow-none rounded-0">{{ content }}</textarea>
+    </div>
+  </form>
+</div>
+<pre id="printable" class="d-none print-block">{{ content }}</pre>
+<style>
+  @media print {
+    body > * { display: none !important; }
+    .print-block { display: block !important; white-space: pre-wrap; word-break: break-word; color: black; background: transparent; }
+  }
+</style>
+<script>
+  document.getElementById('content').focus();
+</script>
+{% endblock %}

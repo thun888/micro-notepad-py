@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+
+{% block status_text %}差异对比: 版本 {{ version_num - 1 }} &rarr; 版本 {{ version_num }}{% endblock %}
+
+{% block extra_nav %}
+<a href="{{ url_for('view_revisions', note_id=note_id) }}" class="btn btn-outline-light btn-sm ms-3">返回历史记录</a>
+{% endblock %}
+
+{% block content %}
+<div class="main-container mx-3 my-3" style="overflow-y: auto;">
+  <div class="card shadow-sm border-0 h-100">
+    <div class="card-body p-0 table-responsive bg-white">
+      <!-- 针对 difflib 生成的表格应用无边距适应 -->
+      <style>
+        .diff { width: 100%; border-collapse: collapse; }
+        .diff td { padding: 4px 8px; font-size: 14px; }
+        .diff th { background: #f8f9fa; border-bottom: 2px solid #dee2e6; padding: 8px; text-align: center; }
+      </style>
+      {{ html_diff|safe }}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block status_text %}历史记录{% endblock %}
+
+{% block content %}
+<div class="main-container mx-3 my-3" style="overflow-y: auto;">
+  <div class="card shadow-sm border-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-striped mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col" class="ps-4">版本</th>
+            <th scope="col">创建时间</th>
+            <th scope="col" class="pe-4">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rev in revisions %}
+          <tr>
+            <td class="ps-4 align-middle">{{ rev.version_num }}</td>
+            <td class="align-middle">{{ rev.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td class="pe-4 align-middle">
+              <a href="{{ url_for('view_revision_content', note_id=note.id, version_num=rev.version_num) }}" class="btn btn-sm btn-outline-primary me-2">查看源码</a>
+              {% if rev.version_num > 1 %}
+              <a href="{{ url_for('view_diff', note_id=note.id, version_num=rev.version_num) }}" class="btn btn-sm btn-outline-secondary">查看差异</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not revisions %}
+          <tr>
+            <td colspan="3" class="text-center text-muted py-4">暂无历史记录。</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
