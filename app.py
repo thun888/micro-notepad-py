@@ -71,10 +71,15 @@ def view_note(note_id):
 
 @app.route('/<note_id>/title', methods=['POST'])
 def update_title(note_id):
-    note = Note.query.get_or_404(note_id)
     data = request.get_json()
     if data and 'title' in data:
-        note.title = data['title'].strip() or '未命名'
+        note = Note.query.get(note_id)
+        new_title = data['title'].strip() or '未命名'
+        if not note:
+            note = Note(id=note_id, title=new_title)
+            db.session.add(note)
+        else:
+            note.title = new_title
         db.session.commit()
         return {'status': 'ok'}
     return {'status': 'error'}, 400
