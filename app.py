@@ -106,4 +106,6 @@ def view_diff(note_id, version_num):
     return render_template('diff.html', note=note, note_id=note_id, html_diff=html_diff, version_num=version_num)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # app.run(debug=True, port=5000)
+    port = int(os.getenv('PORT', 5000))
+    app.run(port=port)
