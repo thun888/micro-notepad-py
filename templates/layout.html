@@ -72,12 +72,16 @@
 <body>
   <nav class="navbar navbar-dark bg-dark px-3 flex-shrink-0">
     <div class="d-flex align-items-baseline">
+      {% if can_edit %}
       <a class="navbar-brand mb-0 h1" href="#" data-bs-toggle="modal" data-bs-target="#titleModal" id="display-note-title" title="点击修改标题" style="text-decoration: dashed underline; text-underline-offset: 4px;">{{ note.title if note else '未命名' }}</a>
+      {% else %}
+      <span class="navbar-brand mb-0 h1" id="display-note-title">{{ note.title if note else '未命名' }} <small class="text-warning text-sm">(只读)</small></span>
+      {% endif %}
       <span class="text-secondary ms-2">| /{{ note_id }}</span>
       <span class="text-secondary ms-3 small">{% block status_text %}{% endblock %}</span>
     </div>
     <div class="ms-auto d-flex align-items-center">
-      <a href="{{ url_for('view_note', note_id=note_id) }}" class="text-light text-decoration-none ms-3">编辑</a>
+      <a href="{{ url_for('view_note', note_id=note_id) }}" class="text-light text-decoration-none ms-3">查看内容</a>
       <a href="{{ url_for('view_revisions', note_id=note_id) }}" class="text-light text-decoration-none ms-3">历史记录</a>
       {% block extra_nav %}{% endblock %}
     </div>
@@ -85,6 +89,7 @@
 
   {% block content %}{% endblock %}
 
+  {% if can_edit %}
   <!-- 标题修改弹窗 Modal -->
   <div class="modal fade" id="titleModal" tabindex="-1" aria-labelledby="titleModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-sm">
@@ -103,9 +108,11 @@
       </div>
     </div>
   </div>
+  {% endif %}
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.css"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  {% if can_edit %}
   <script>
     const titleInput = document.getElementById('note-title-input');
     const displayTitle = document.getElementById('display-note-title');
@@ -140,5 +147,6 @@
       titleInput.select();
     });
   </script>
+  {% endif %}
 </body>
 </html>

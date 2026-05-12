@@ -2,6 +2,7 @@ import os
 import random
 import string
 import difflib
+import ipaddress
 from flask import Flask, request, render_template, redirect, url_for, abort, Response
 from dotenv import load_dotenv
 from models import db, Note, NoteRevision
@@ -13,10 +14,37 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI', 'sq
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev')
 
+trusted_networks = []
+for ip_str in os.getenv('TRUSTED_IPS', '').split(','):
+    ip_str = ip_str.strip()
+    if ip_str:
+        try:
+            trusted_networks.append(ipaddress.ip_network(ip_str, strict=False))
+        except ValueError:
+            pass
+app.config['TRUSTED_NETWORKS'] = trusted_networks
+
 db.init_app(app)
 
 with app.app_context():
     db.create_all()
+
+@app.context_processor
+def inject_can_edit():
+    return dict(can_edit=can_edit())
+
+def can_edit():
+    trusted_networks = app.config.get('TRUSTED_NETWORKS', [])
+    if not trusted_networks:
+        return True # 如果没有配置可信IP，则默认全部允许
+    # 获取真实IP，考虑代理
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    client_ip = client_ip.split(',')[0].strip() if client_ip else ''
+    try:
+        ip_obj = ipaddress.ip_address(client_ip)
+        return any(ip_obj in net for net in trusted_networks)
+    except ValueError:
+        return False
 
 def generate_note_id(length=5):
     chars = '234579abcdefghjkmnpqrstwxyz'
@@ -43,6 +71,9 @@ def view_note(note_id):
     note = Note.query.get(note_id)
     
     if request.method == 'POST':
+        if not can_edit():
+            abort(403, "Read-only mode: Your IP is not in the trusted list.")
+            
         content = request.form.get('content', '')
         
         if not note:
@@ -71,6 +102,9 @@ def view_note(note_id):
 
 @app.route('/<note_id>/title', methods=['POST'])
 def update_title(note_id):
+    if not can_edit():
+        return {'status': 'error', 'message': 'Forbidden'}, 403
+        
     data = request.get_json()
     if data and 'title' in data:
         note = Note.query.get(note_id)
