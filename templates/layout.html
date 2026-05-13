@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ note.title if note else '未命名' }}</title>
   <link href="https://static.hzchu.top/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+  <!-- icon -->
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.svg') }}">
   <style>
     body {
       background: #ebeef1;
@@ -70,19 +72,19 @@
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-dark bg-dark px-3 flex-shrink-0">
+  <nav class="navbar px-3 flex-shrink-0" style="background-color: #e9ecef;">
     <div class="d-flex align-items-baseline">
       {% if can_edit %}
-      <a class="navbar-brand mb-0 h1" href="#" data-bs-toggle="modal" data-bs-target="#titleModal" id="display-note-title" title="点击修改标题" style="text-decoration: dashed underline; text-underline-offset: 4px;">{{ note.title if note else '未命名' }}</a>
+      <a class="navbar-brand mb-0 h1 text-dark" href="#" data-bs-toggle="modal" data-bs-target="#titleModal" id="display-note-title" title="点击修改标题" style="text-decoration: dashed underline; text-underline-offset: 4px;">{{ note.title if note else '未命名' }}</a>
       {% else %}
-      <span class="navbar-brand mb-0 h1" id="display-note-title">{{ note.title if note else '未命名' }} <small class="text-warning text-sm">(只读)</small></span>
+      <span class="navbar-brand mb-0 h1 text-dark" id="display-note-title">{{ note.title if note else '未命名' }} <small class="text-warning text-sm">(只读)</small></span>
       {% endif %}
       <span class="text-secondary ms-2">| /{{ note_id }}</span>
       <span class="text-secondary ms-3 small">{% block status_text %}{% endblock %}</span>
     </div>
     <div class="ms-auto d-flex align-items-center">
-      <a href="{{ url_for('view_note', note_id=note_id) }}" class="text-light text-decoration-none ms-3">查看内容</a>
-      <a href="{{ url_for('view_revisions', note_id=note_id) }}" class="text-light text-decoration-none ms-3">历史记录</a>
+      <a href="{{ url_for('view_note', note_id=note_id) }}" class="text-dark text-decoration-none ms-3">查看内容</a>
+      <a href="{{ url_for('view_revisions', note_id=note_id) }}" class="text-dark text-decoration-none ms-3">历史记录</a>
       {% block extra_nav %}{% endblock %}
     </div>
   </nav>
