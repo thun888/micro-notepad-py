@@ -8,15 +8,26 @@
 
 {% block content %}
 <div class="main-container mx-3 my-3">
-  <div class="content-area d-flex h-100">
-    <textarea id="content" class="form-control w-100 h-100 shadow-none rounded-0" readonly>{{ rev.content }}</textarea>
+  <div class="content-area h-100 border bg-white p-3" style="overflow-y: auto;">
+    <div class="ql-editor ql-editor-preview">{{ content|safe }}</div>
   </div>
 </div>
-<pre id="printable" class="d-none print-block">{{ rev.content }}</pre>
 <style>
+  .ql-editor-preview {
+    padding: 12px 15px;
+  }
+  .ql-editor-preview img {
+    max-width: 100%;
+    height: auto;
+  }
+  .ql-editor-preview .attachment-card {
+    max-width: 400px;
+  }
   @media print {
     body > * { display: none !important; }
-    .print-block { display: block !important; white-space: pre-wrap; word-break: break-word; color: black; background: transparent; }
+    .main-container { display: block !important; }
+    .main-container .content-area { border: none !important; overflow: visible !important; }
+    .ql-editor-preview { display: block !important; color: black; background: transparent; }
   }
 </style>
 {% endblock %}

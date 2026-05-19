@@ -4,26 +4,194 @@
 
 {% block extra_nav %}
 {% if can_edit %}
-<button type="submit" form="edit-form" class="btn btn-primary btn-sm ms-3">保存</button>
+<input type="file" id="file-input" class="d-none" multiple>
+<button type="button" class="btn btn-outline-secondary btn-sm ms-3" onclick="document.getElementById('file-input').click()">附件</button>
+<button type="button" id="btn-save" class="btn btn-primary btn-sm ms-2">保存</button>
+<span id="save-status" class="ms-2 small text-muted"></span>
 {% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="main-container mx-3 my-3">
-  <form id="edit-form" method="POST" action="{{ url_for('view_note', note_id=note_id) }}" class="h-100 d-flex flex-column">
-    <div class="content-area d-flex h-100">
-      <textarea id="content" name="content" class="form-control w-100 h-100 shadow-none rounded-0" {% if not can_edit %}readonly{% endif %}>{{ content }}</textarea>
-    </div>
+<div class="main-container mx-3 my-3 d-flex flex-column">
+  {% if can_edit %}
+  <div id="quill-editor" class="flex-grow-1" style="min-height: 0;"></div>
+  <form id="edit-form" method="POST" style="display:none;">
+    <input type="hidden" name="content" id="hidden-content">
   </form>
+  {% else %}
+  <div class="content-area h-100 border bg-white p-3" style="overflow-y: auto;">
+    <div class="ql-editor ql-editor-preview">{{ content|safe }}</div>
+  </div>
+  {% endif %}
 </div>
-<pre id="printable" class="d-none print-block">{{ content }}</pre>
+
+{% if can_edit %}
+<script src="https://unpkg.com/quill@2.0.3/dist/quill.js"></script>
+<script>
+  // Register custom attachment blot
+  const BlockEmbed = Quill.import('blots/block/embed');
+
+  class AttachmentBlot extends BlockEmbed {
+    static create(value) {
+      const node = super.create();
+      node.setAttribute('contenteditable', 'false');
+      node.innerHTML = '<div class="attachment-card d-flex align-items-center p-2 border rounded mb-2" style="cursor:pointer;" onclick="window.open(\'' + value.url + '\',\'_blank\')">' +
+        '<span class="me-2">&#128206;</span>' +
+        '<span class="text-truncate">' + value.filename + '</span>' +
+        '</div>';
+      node.dataset.url = value.url;
+      node.dataset.filename = value.filename;
+      return node;
+    }
+    static value(node) {
+      return { url: node.dataset.url, filename: node.dataset.filename };
+    }
+  }
+  AttachmentBlot.blotName = 'attachment';
+  AttachmentBlot.tagName = 'div';
+  AttachmentBlot.className = 'ql-attachment';
+  Quill.register(AttachmentBlot);
+
+  // Initialize Quill
+  const quill = new Quill('#quill-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['link', 'image', 'code-block'],
+        ['clean']
+      ]
+    },
+    placeholder: '开始编写...'
+  });
+
+  // Load existing content
+  {% if content %}
+  quill.root.innerHTML = {{ content|tojson }};
+  {% endif %}
+
+  // Custom image handler: upload instead of URL prompt
+  const toolbar = quill.getModule('toolbar');
+  toolbar.addHandler('image', function() {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/*');
+    input.click();
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (file) await uploadAndInsert(file);
+    };
+  });
+
+  // Paste file handling (images + other files)
+  quill.root.addEventListener('paste', async (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.kind === 'file') {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) await uploadAndInsert(file);
+        break;
+      }
+    }
+  });
+
+  // Drop file handling (all file types)
+  quill.root.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || !files.length) return;
+    for (const file of files) {
+      await uploadAndInsert(file);
+    }
+  });
+  quill.root.addEventListener('dragover', (e) => e.preventDefault());
+
+  // File input button (all file types)
+  document.getElementById('file-input').addEventListener('change', async (e) => {
+    const files = e.target.files;
+    for (const file of files) {
+      await uploadAndInsert(file);
+    }
+    e.target.value = '';
+  });
+
+  // Upload file and insert into editor
+  async function uploadAndInsert(file) {
+    const status = document.getElementById('save-status');
+    status.textContent = '上传中...';
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const resp = await fetch('/{{ note_id }}/upload', { method: 'POST', body: formData });
+      const data = await resp.json();
+      if (data.status === 'ok') {
+        const range = quill.getSelection(true);
+        if (data.is_image) {
+          quill.insertEmbed(range.index, 'image', data.url);
+          quill.setSelection(range.index + 1);
+        } else {
+          quill.insertEmbed(range.index, 'attachment', { url: data.url, filename: data.filename });
+          quill.setSelection(range.index + 1);
+        }
+        status.textContent = '';
+      } else {
+        status.textContent = '';
+        alert(data.message || '上传失败');
+      }
+    } catch (err) {
+      status.textContent = '';
+      alert('上传出错: ' + err.message);
+    }
+  }
+
+  // Save button
+  document.getElementById('btn-save').addEventListener('click', function() {
+    const html = quill.root.innerHTML;
+    document.getElementById('hidden-content').value = html;
+    document.getElementById('edit-form').submit();
+  });
+
+  // Ctrl+S shortcut
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      document.getElementById('btn-save').click();
+    }
+  });
+</script>
 <style>
-  @media print {
-    body > * { display: none !important; }
-    .print-block { display: block !important; white-space: pre-wrap; word-break: break-word; color: black; background: transparent; }
+  #quill-editor {
+    display: flex;
+    flex-direction: column;
+  }
+  .ql-toolbar.ql-snow {
+    border-radius: 0;
+    flex-shrink: 0;
+  }
+  .ql-container.ql-snow {
+    flex: 1;
+    overflow-y: auto;
+    font-size: 15px;
+    border-radius: 0;
+  }
+  .ql-editor {
+    min-height: 200px;
+  }
+  .ql-editor img {
+    max-width: 100%;
+    height: auto;
+  }
+  .attachment-card {
+    max-width: 400px;
+  }
+  .ql-editor-preview img {
+    max-width: 100%;
+    height: auto;
   }
 </style>
-<script>
-  document.getElementById('content').focus();
-</script>
+{% endif %}
 {% endblock %}

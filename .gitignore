@@ -1,3 +1,4 @@
 .env
 instance/micro_notepad.db
 __pycache__
+.claude

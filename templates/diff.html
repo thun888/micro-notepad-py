@@ -3,14 +3,18 @@
 {% block status_text %}差异对比: 版本 {{ version_num - 1 }} &rarr; 版本 {{ version_num }}{% endblock %}
 
 {% block extra_nav %}
-<a href="{{ url_for('view_revisions', note_id=note_id) }}" class="btn btn-outline-light btn-sm ms-3">返回历史记录</a>
+<div class="btn-group btn-group-sm ms-3">
+  <button class="btn btn-outline-light active" id="btn-text-diff" onclick="showDiff('text')">文本差异</button>
+  <button class="btn btn-outline-light" id="btn-visual-diff" onclick="showDiff('visual')">可视化预览</button>
+</div>
+<a href="{{ url_for('view_revisions', note_id=note_id) }}" class="btn btn-outline-light btn-sm ms-2">返回历史记录</a>
 {% endblock %}
 
 {% block content %}
 <div class="main-container mx-3 my-3" style="overflow-y: auto;">
   <div class="card shadow-sm border-0 h-100">
-    <div class="card-body p-0 table-responsive bg-white">
-      <!-- 针对 difflib 生成的表格应用无边距适应 -->
+    <!-- Text diff mode -->
+    <div id="diff-text" class="card-body p-0 table-responsive bg-white">
       <style>
         .diff { width: 100%; border-collapse: collapse; }
         .diff td { padding: 4px 8px; font-size: 14px; }
@@ -18,6 +22,36 @@
       </style>
       {{ html_diff|safe }}
     </div>
+    <!-- Visual preview mode -->
+    <div id="diff-visual" class="d-none h-100">
+      <div class="row g-0 h-100">
+        <div class="col-6 border-end" style="overflow-y:auto;">
+          <div class="p-2 bg-light text-muted small border-bottom">版本 {{ version_num - 1 }}</div>
+          <div class="ql-editor ql-editor-preview p-3">{{ prev_html|safe }}</div>
+        </div>
+        <div class="col-6" style="overflow-y:auto;">
+          <div class="p-2 bg-light text-muted small border-bottom">版本 {{ version_num }}</div>
+          <div class="ql-editor ql-editor-preview p-3">{{ curr_html|safe }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
+<style>
+  .ql-editor-preview img {
+    max-width: 100%;
+    height: auto;
+  }
+  .ql-editor-preview .attachment-card {
+    max-width: 400px;
+  }
+</style>
+<script>
+function showDiff(mode) {
+  document.getElementById('diff-text').classList.toggle('d-none', mode !== 'text');
+  document.getElementById('diff-visual').classList.toggle('d-none', mode !== 'visual');
+  document.getElementById('btn-text-diff').classList.toggle('active', mode === 'text');
+  document.getElementById('btn-visual-diff').classList.toggle('active', mode === 'visual');
+}
+</script>
 {% endblock %}

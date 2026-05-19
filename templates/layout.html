@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ note.title if note else '未命名' }}</title>
   <link href="https://static.hzchu.top/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/quill@2.0.3/dist/quill.snow.css" rel="stylesheet">
   <!-- icon -->
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.svg') }}">
   <style>
@@ -67,6 +68,45 @@
       }
       .table {
         color: #fff;
+      }
+      /* Quill dark mode */
+      .ql-toolbar.ql-snow {
+        border-color: #495265;
+        background: #2a2d35;
+      }
+      .ql-toolbar.ql-snow .ql-stroke { stroke: #ccc; }
+      .ql-toolbar.ql-snow .ql-fill { fill: #ccc; }
+      .ql-toolbar.ql-snow button:hover .ql-stroke,
+      .ql-toolbar.ql-snow .ql-picker-label:hover .ql-stroke { stroke: #fff; }
+      .ql-toolbar.ql-snow .ql-picker { color: #ccc; }
+      .ql-toolbar.ql-snow .ql-picker-options {
+        background-color: #2a2d35;
+        border-color: #495265;
+      }
+      .ql-container.ql-snow {
+        border-color: #495265;
+      }
+      .ql-editor {
+        background: #24262b;
+        color: #e0e0e0;
+      }
+      .ql-editor.ql-blank::before {
+        color: #666;
+      }
+      /* Navbar dark mode */
+      .navbar { background-color: #2a2d35 !important; }
+      .navbar .text-dark { color: #e0e0e0 !important; }
+      .navbar .text-secondary { color: #999 !important; }
+      /* Attachment card dark mode */
+      .attachment-card {
+        background: #2a2d35;
+        border-color: #495265 !important;
+        color: #e0e0e0;
+      }
+      /* Quill preview dark mode (read-only / diff) */
+      .ql-editor-preview {
+        background: #24262b;
+        color: #e0e0e0;
       }
     }
   </style>
