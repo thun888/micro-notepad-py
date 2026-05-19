@@ -44,6 +44,10 @@
   }
   .ql-editor-preview .attachment-card {
     max-width: 400px;
+    cursor: pointer;
+  }
+  .ql-editor-preview .attachment-card:hover {
+    background-color: #f8f9fa;
   }
 </style>
 <script>
@@ -53,5 +57,24 @@ function showDiff(mode) {
   document.getElementById('btn-text-diff').classList.toggle('active', mode === 'text');
   document.getElementById('btn-visual-diff').classList.toggle('active', mode === 'visual');
 }
+(function() {
+  var nodes = document.querySelectorAll('.ql-attachment');
+  nodes.forEach(function(node) {
+    var attachmentId = node.dataset.attachmentId;
+    if (!attachmentId) return;
+    fetch('/attachments/' + attachmentId + '/url')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.status === 'ok' && data.url) {
+          node.dataset.url = data.url;
+          var card = node.querySelector('.attachment-card');
+          if (card) {
+            card.setAttribute('onclick', "window.open('" + data.url + "','_blank')");
+          }
+        }
+      })
+      .catch(function() {});
+  });
+})();
 </script>
 {% endblock %}

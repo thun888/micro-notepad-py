@@ -12,6 +12,27 @@
     <div class="ql-editor ql-editor-preview">{{ content|safe }}</div>
   </div>
 </div>
+<script>
+(function() {
+  var nodes = document.querySelectorAll('.ql-attachment');
+  nodes.forEach(function(node) {
+    var attachmentId = node.dataset.attachmentId;
+    if (!attachmentId) return;
+    fetch('/attachments/' + attachmentId + '/url')
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.status === 'ok' && data.url) {
+          node.dataset.url = data.url;
+          var card = node.querySelector('.attachment-card');
+          if (card) {
+            card.setAttribute('onclick', "window.open('" + data.url + "','_blank')");
+          }
+        }
+      })
+      .catch(function() {});
+  });
+})();
+</script>
 <style>
   .ql-editor-preview {
     padding: 12px 15px;
@@ -22,6 +43,10 @@
   }
   .ql-editor-preview .attachment-card {
     max-width: 400px;
+    cursor: pointer;
+  }
+  .ql-editor-preview .attachment-card:hover {
+    background-color: #f8f9fa;
   }
   @media print {
     body > * { display: none !important; }
