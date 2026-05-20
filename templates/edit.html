@@ -35,27 +35,23 @@
     static create(value) {
       const node = super.create();
       node.setAttribute('contenteditable', 'false');
-      node.innerHTML = '<div class="attachment-card d-flex align-items-center p-2 border rounded mb-2" style="cursor:pointer;" onclick="window.open(\'' + value.url + '\',\'_blank\')">' +
-        '<span class="me-2">&#128206;</span>' +
-        '<span class="text-truncate">' + value.filename + '</span>' +
-        '</div>';
-      node.dataset.url = value.url;
+      node.setAttribute('href', value.url || '#');
+      node.setAttribute('target', '_blank');
+      // Adding styling directly to match previous card look
+      node.setAttribute('class', 'ql-attachment attachment-card d-flex align-items-center p-2 border rounded mb-2');
+      node.setAttribute('style', 'text-decoration:none; color:inherit; cursor:pointer; display:block;');
+      node.innerHTML = '<span class="me-2">&#128206;</span>' +
+        '<span class="text-truncate">' + value.filename + '</span>';
       node.dataset.filename = value.filename;
-      if (value.attachment_id) {
-        node.dataset.attachmentId = value.attachment_id;
-      }
+      node.dataset.url = value.url || node.getAttribute('href');
       return node;
     }
     static value(node) {
-      const val = { url: node.dataset.url, filename: node.dataset.filename };
-      if (node.dataset.attachmentId) {
-        val.attachment_id = parseInt(node.dataset.attachmentId, 10);
-      }
-      return val;
+      return { url: node.dataset.url || node.getAttribute('href'), filename: node.dataset.filename };
     }
   }
   AttachmentBlot.blotName = 'attachment';
-  AttachmentBlot.tagName = 'div';
+  AttachmentBlot.tagName = 'a';
   AttachmentBlot.className = 'ql-attachment';
   Quill.register(AttachmentBlot);
 
@@ -76,73 +72,8 @@
 
   // Load existing content
   {% if content %}
-  // Preserve data-attachment-id before Quill processes the DOM
-  const attachmentIdMap = new Map();
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = {{ content|tojson }};
-  tempDiv.querySelectorAll('.ql-attachment').forEach(node => {
-    if (node.dataset.attachmentId) {
-      const filename = node.dataset.filename;
-      attachmentIdMap.set(filename, node.dataset.attachmentId);
-    }
-  });
-
-  // MutationObserver to restore data-attachment-id after Quill creates nodes
-  const observer = new MutationObserver((mutations) => {
-    console.log('Mutation observed:', mutations.length, 'mutations');
-    for (const mutation of mutations) {
-      console.log('Added nodes:', mutation.addedNodes.length);
-      for (const node of mutation.addedNodes) {
-        if (node.classList && node.classList.contains('ql-attachment')) {
-          const filename = node.dataset.filename;
-          console.log('Found ql-attachment node:', filename);
-          if (filename && attachmentIdMap.has(filename)) {
-            node.dataset.attachmentId = attachmentIdMap.get(filename);
-            console.log('Restored attachment_id for', filename);
-          }
-        }
-      }
-    }
-  });
-  observer.observe(quill.root, { childList: true, subtree: true });
-
   quill.root.innerHTML = {{ content|tojson }};
-  observer.disconnect();
-  refreshAttachmentUrls();
   {% endif %}
-
-  // Refresh expired presigned URLs for attachments
-  async function refreshAttachmentUrls() {
-    const attachments = quill.root.querySelectorAll('.ql-attachment');
-    console.log('Found attachments:', attachments.length);
-    const promises = [];
-    for (const node of attachments) {
-      const attachmentId = node.dataset.attachmentId;
-      console.log('Attachment:', { filename: node.dataset.filename, attachmentId, url: node.dataset.url });
-      if (!attachmentId) {
-        console.warn('No attachment_id found, skipping');
-        continue;
-      }
-      promises.push(
-        fetch('/attachments/' + attachmentId + '/url')
-          .then(res => res.json())
-          .then(data => {
-            console.log('API response for', attachmentId, ':', data);
-            if (data.status === 'ok' && data.url) {
-              node.dataset.url = data.url;
-              const card = node.querySelector('.attachment-card');
-              if (card) {
-                card.setAttribute('onclick', "window.open('" + data.url + "','_blank')");
-                console.log('Updated onclick for', node.dataset.filename);
-              }
-            }
-          })
-          .catch(err => console.error('Fetch error:', err))
-      );
-    }
-    await Promise.all(promises);
-    console.log('Refresh complete');
-  }
 
   // Custom image handler: upload instead of URL prompt
   const toolbar = quill.getModule('toolbar');
@@ -206,7 +137,7 @@
           quill.insertEmbed(range.index, 'image', data.url);
           quill.setSelection(range.index + 1);
         } else {
-          quill.insertEmbed(range.index, 'attachment', { url: data.url, filename: data.filename, attachment_id: data.attachment_id });
+          quill.insertEmbed(range.index, 'attachment', { url: data.url, filename: data.filename });
           quill.setSelection(range.index + 1);
         }
         status.textContent = '';
@@ -260,9 +191,12 @@
   .attachment-card {
     max-width: 400px;
     cursor: pointer;
+    text-decoration: none !important;
+    color: inherit !important;
   }
   .attachment-card:hover {
     background-color: #f8f9fa;
+    color: inherit !important;
   }
   .ql-editor-preview img {
     max-width: 100%;

@@ -24,10 +24,10 @@ IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 't
 ALLOWED_TAGS = ['p', 'h1', 'h2', 'h3', 'strong', 'em', 'u', 's', 'ol', 'ul', 'li',
                 'a', 'img', 'pre', 'code', 'blockquote', 'br', 'div', 'span']
 ALLOWED_ATTRS = {
-    'a': ['href', 'target', 'rel'],
-    'img': ['src', 'alt', 'width', 'height'],
-    'div': ['class', 'data-*'],
-    'span': ['class'],
+    'a': ['href', 'target', 'rel', 'class', 'style', 'contenteditable', 'data-*'],
+    'img': ['src', 'alt', 'width', 'height', 'class', 'style'],
+    'div': ['class', 'data-*', 'style', 'contenteditable'],
+    'span': ['class', 'style'],
 }
 
 trusted_networks = []
@@ -56,13 +56,18 @@ def get_s3_client():
         aws_secret_access_key=os.getenv('S3_SECRET_ACCESS_KEY'),
     )
 
-def get_presigned_url(s3_key):
+def get_presigned_url(s3_key, filename=None):
     client = get_s3_client()
     bucket = os.getenv('S3_BUCKET')
     expire = int(os.getenv('S3_PRESIGN_EXPIRE', 3600))
+    params = {'Bucket': bucket, 'Key': s3_key}
+    if filename:
+        from urllib.parse import quote
+        encoded_filename = quote(filename.encode('utf-8'))
+        params['ResponseContentDisposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
     return client.generate_presigned_url(
         'get_object',
-        Params={'Bucket': bucket, 'Key': s3_key},
+        Params=params,
         ExpiresIn=expire,
     )
 
@@ -283,15 +288,16 @@ def upload_attachment(note_id):
     return jsonify({
         'status': 'ok',
         'attachment_id': attachment.id,
-        'url': get_presigned_url(s3_key),
+        'url': url_for('download_attachment_file', attachment_id=attachment.id),
         'filename': file.filename,
         'is_image': is_img,
     })
 
-@app.route('/attachments/<int:attachment_id>/url')
-def get_attachment_url(attachment_id):
+@app.route('/attachments/<int:attachment_id>/download')
+def download_attachment_file(attachment_id):
     attachment = Attachment.query.get_or_404(attachment_id)
-    return jsonify({'status': 'ok', 'url': get_presigned_url(attachment.s3_key)})
+    presigned_url = get_presigned_url(attachment.s3_key, filename=attachment.filename)
+    return redirect(presigned_url)
 
 @app.route('/attachments/<int:attachment_id>/delete', methods=['POST'])
 def delete_attachment(attachment_id):
