@@ -4,8 +4,10 @@ import string
 import difflib
 import ipaddress
 import uuid
+import re
 from html.parser import HTMLParser
 from flask import Flask, request, render_template, redirect, url_for, abort, Response, send_from_directory, jsonify
+from sqlalchemy import func
 from dotenv import load_dotenv
 from models import db, Note, NoteRevision, Attachment
 import boto3
@@ -154,8 +156,109 @@ def is_raw_request(req):
 
 @app.route('/')
 def index():
-    note_id = generate_note_id()
-    return redirect(url_for('view_note', note_id=note_id))
+    q = request.args.get('q', '').strip()
+    results = []
+    new_note_id = generate_note_id()
+
+    if q:
+        escaped = q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+        like_pattern = f'%{escaped}%'
+        seen = set()
+
+        # 1) Search note titles
+        for n in Note.query.filter(Note.title.ilike(like_pattern, escape='\\')).all():
+            if n.id not in seen:
+                seen.add(n.id)
+                results.append({
+                    'note': n, 'title_match': True,
+                    'content_snippet': '', 'attachment_match': False,
+                })
+
+        # 2) Search latest revision content only
+        latest_subq = db.session.query(
+            NoteRevision.note_id,
+            func.max(NoteRevision.version_num).label('max_ver')
+        ).group_by(NoteRevision.note_id).subquery()
+
+        content_notes = db.session.query(Note).join(
+            latest_subq, Note.id == latest_subq.c.note_id
+        ).join(
+            NoteRevision, db.and_(
+                NoteRevision.note_id == latest_subq.c.note_id,
+                NoteRevision.version_num == latest_subq.c.max_ver
+            )
+        ).filter(
+            NoteRevision.content.ilike(like_pattern, escape='\\')
+        ).all()
+
+        for n in content_notes:
+            if n.id in seen:
+                for r in results:
+                    if r['note'].id == n.id:
+                        r['content_match'] = True
+                        break
+            else:
+                seen.add(n.id)
+                results.append({
+                    'note': n, 'title_match': False,
+                    'content_match': True, 'content_snippet': '',
+                    'attachment_match': False,
+                })
+
+        # 3) Search attachment filenames
+        attach_notes = db.session.query(Note).join(
+            Attachment, Attachment.note_id == Note.id
+        ).filter(
+            Attachment.filename.ilike(like_pattern, escape='\\')
+        ).all()
+
+        for n in attach_notes:
+            if n.id in seen:
+                for r in results:
+                    if r['note'].id == n.id:
+                        r['attachment_match'] = True
+                        break
+            else:
+                seen.add(n.id)
+                results.append({
+                    'note': n, 'title_match': False,
+                    'content_match': False, 'content_snippet': '',
+                    'attachment_match': True,
+                })
+
+        # 4) Generate content snippets with highlight
+        for r in results:
+            if r.get('content_match'):
+                latest_rev = NoteRevision.query.filter_by(
+                    note_id=r['note'].id
+                ).order_by(NoteRevision.version_num.desc()).first()
+                if latest_rev:
+                    text = html_to_text(latest_rev.content)
+                    pos = text.lower().find(q.lower())
+                    if pos >= 0:
+                        start = max(0, pos - 60)
+                        end = min(len(text), pos + len(q) + 60)
+                        snippet = text[start:end]
+                        pattern = re.compile(re.escape(q), re.IGNORECASE)
+                        snippet = pattern.sub(lambda m: f'<mark>{m.group()}</mark>', snippet)
+                        if start > 0:
+                            snippet = '...' + snippet
+                        if end < len(text):
+                            snippet = snippet + '...'
+                        r['content_snippet'] = snippet
+
+        # Sort: title matches first, then content, then attachments
+        results.sort(key=lambda r: (
+            not r['title_match'],
+            not r.get('content_match', False),
+            not r['attachment_match'],
+        ))
+
+    return render_template('search.html', results=results, q=q)
+
+@app.route('/new')
+def new_note():
+    return redirect(url_for('view_note', note_id=generate_note_id()))
 
 @app.route('/<note_id>', methods=['GET', 'POST'])
 def view_note(note_id):

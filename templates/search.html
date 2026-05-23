@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+
+{% block title %}笔记搜索{% endblock %}
+{% block status_text %}搜索笔记{% endblock %}
+
+{% block content %}
+<div class="main-container mx-3 my-3"{% if not q or not results %} style="display: flex; justify-content: center; flex-direction: column;"{% else %} style="overflow-y: auto;"{% endif %}>
+  <!-- Search bar -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-12 col-md-8 col-lg-6">
+      <form method="GET" action="{{ url_for('index') }}">
+        <div class="input-group input-group-lg">
+          <input type="text" name="q" class="form-control"
+                 placeholder="搜索笔记标题、内容或附件..."
+                 value="{{ q }}" autofocus>
+          <button class="btn btn-primary" type="submit">搜索</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Results -->
+  {% if q %}
+    {% if results %}
+    <div class="row justify-content-center">
+      <div class="col-12 col-md-8 col-lg-6">
+        <p class="text-muted mb-3">找到 {{ results|length }} 个结果</p>
+        <div class="list-group">
+          {% for r in results %}
+          <a href="{{ url_for('view_note', note_id=r.note.id) }}" class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between align-items-start">
+              <h6 class="mb-1">{{ r.note.title }}</h6>
+              <small class="text-muted text-nowrap ms-2">{{ r.note.updated_at.strftime('%Y-%m-%d %H:%M') if r.note.updated_at else '' }}</small>
+            </div>
+            {% if r.content_snippet %}
+            <p class="mb-1 small text-muted">{{ r.content_snippet|safe }}</p>
+            {% endif %}
+            <div class="mt-1">
+              {% if r.title_match %}
+              <span class="badge bg-primary">标题</span>
+              {% endif %}
+              {% if r.get('content_match') %}
+              <span class="badge bg-secondary">内容</span>
+              {% endif %}
+              {% if r.attachment_match %}
+              <span class="badge bg-info text-dark">附件</span>
+              {% endif %}
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <p class="fs-5">未找到匹配 "{{ q }}" 的笔记</p>
+      <p>尝试使用不同的关键词</p>
+    </div>
+    {% endif %}
+  {% else %}
+    <!-- Empty state: no query yet -->
+    <div class="text-center text-muted py-5">
+      <p class="fs-5">输入关键词搜索笔记</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
